@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="ps">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>زم زم لبنیات — ورځنی او میاشتنۍ حساب</title>
+<style>
+:root{--blue:#0b79c1;--dark:#063a5b;--card:#fff;--muted:#6b7280}
+html,body{height:100%;margin:0;font-family: "Segoe UI", Roboto, "Noto Naskh Arabic", Arial;background:#e8f6ff;color:#062a3a;direction:rtl}
+header{background:linear-gradient(90deg,var(--blue),#0a6da8);color:#fff;padding:14px 16px;text-align:center}
+.container{max-width:1000px;margin:16px auto;padding:12px}
+.card{background:var(--card);border-radius:10px;padding:12px;box-shadow:0 6px 20px rgba(9,30,63,0.06);margin-bottom:14px}
+label{display:block;font-weight:700;margin:8px 0 4px}
+input,select,button{width:100%;padding:10px;border-radius:8px;border:1px solid #d6eaf8;font-size:15px;box-sizing:border-box}
+button{background:var(--blue);color:#fff;border:0;cursor:pointer;font-weight:700;margin-top:6px}
+.small{font-size:13px;color:var(--muted)}
+.row{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
+.col{flex:1 1 200px;min-width:150px}
+table{width:100%;border-collapse:collapse;margin-top:10px}
+th,td{border:1px solid #e6f3fb;padding:8px;text-align:center;font-size:14px}
+th{background:#f0fbff;font-weight:800}
+.stats{display:flex;gap:12px;flex-wrap:wrap;margin-top:10px}
+.stat{background:#f7fcff;padding:10px;border-radius:8px;flex:1;min-width:140px;text-align:center}
+@media(max-width:720px){.row{flex-direction:column}.col{min-width:100%}input,select,button{font-size:16px;padding:12px}th,td{font-size:13px;padding:6px}}
+</style>
+</head>
+<body>
+<header>
+  <div style="font-size:20px">📦 زم زم لبنیات — ورځنی او میاشتنۍ حساب</div>
+  <div class="small" style="margin-top:6px">هره ورځ خپل شیټ — سرمایه، مصرف او قرضه دواړه ورځي او میاشتي ښکاره دي</div>
+</header>
+
+<div class="container">
+
+  <!-- LOGIN -->
+  <div id="loginCard" class="card">
+    <h3>ننوتل</h3>
+    <div class="row">
+      <div class="col"><label>کارن نوم</label><input id="loginUser" placeholder="مثال: admin"></div>
+      <div class="col"><label>رمز</label><input id="loginPass" type="password" placeholder="رمز"></div>
+      <div style="flex:0 0 140px"><button onclick="doLogin()">ننوتل</button></div>
+    </div>
+    <p class="small">ډیفالټونه: <b>admin/admin</b> (مالک)، <b>manager/123</b> (مدیر)، <b>worker/1234</b> (کارمند)</p>
+    <p id="loginMsg" class="small"></p>
+  </div>
+
+  <!-- APP -->
+  <div id="appCard" class="card" style="display:none">
+
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+      <div>
+        <div style="font-weight:800" id="who">سلام —</div>
+        <div class="small" id="whoRole"></div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button onclick="logout()" style="background:#e74c3c">خروج</button>
+        <button onclick="downloadTodayCSV()">نن ورځ CSV</button>
+        <button onclick="downloadMonthlyCSV()">دا میاشت CSV</button>
+      </div>
+    </div>
+
+    <!-- STOCK -->
+    <div class="card">
+      <h3>ګدام / محصولات (مالک/مدیر اضافه کولی شي)</h3>
+      <div class="row">
+        <div class="col"><label>محصول نوم</label><input id="prodName" placeholder="مثلاً شیدې"></div>
+        <div class="col"><label>مقدار (عددي)</label><input id="prodQty" type="number" min="0" placeholder="مقدار"></div>
+        <div class="col"><label>قیمت اخیستلو (فی)</label><input id="prodBuy" type="number" min="0" placeholder="فی قیمت"></div>
+        <div style="flex:0 0 140px"><label style="visibility:hidden">اضافه</label><button id="btnAddProd" onclick="addOrUpdateProduct()">اضافه / تازه</button></div>
+      </div>
+
+      <div style="margin-top:12px">
+        <table>
+          <thead><tr><th>محصول</th><th>مقدار</th><th>قیمت اخیستلو</th><th>ارزښت (مقدار × فی)</th><th>عملیات</th></tr></thead>
+          <tbody id="stockTable"></tbody>
+        </table>
+        <div class="small" style="margin-top:8px">ستاسو سرمایه (ګدام ارزښت): <b id="myInvestment">0</b> افغانۍ</div>
+      </div>
+    </div>
+
+    <!-- SALE -->
+    <div class="card">
+      <h3>پلور ثبت (کارمند پلور ثبتوي)</h3>
+      <div class="row">
+        <div class="col"><label>نیټه (نن ورځ شیټ کارول)</label><input id="saleDate" disabled></div>
+        <div class="col"><label>محصول</label><select id="saleProduct"></select></div>
+        <div class="col"><label>مقدار</label><input id="saleQty" type="number" min="1" placeholder="مقدار"></div>
+        <div class="col"><label>فی قیمت (پلور)</label><input id="salePrice" type="number" min="0" placeholder="فی قیمت"></div>
+        <div class="col"><label>قرضه</label><input id="saleDebt" type="number" min="0" value="0"></div>
+        <div style="flex:0 0 150px"><label style="visibility:hidden">ثبت</label><button onclick="recordSale()">ثبت پلور</button></div>
+      </div>
+    </div>
+
+    <!-- EXPENSE -->
+    <div class="card">
+      <h3>مصارف ثبت</h3>
+      <div class="row">
+        <div class="col"><label>د مصرف نوم</label><input id="expenseName" placeholder="لکه کرایه يا برق"></div>
+        <div class="col"><label>مقدار (افغانی)</label><input id="expenseAmount" type="number" min="0" placeholder="مقدار"></div>
+        <div style="flex:0 0 140px"><label style="visibility:hidden">ثبت</label><button onclick="addExpense()">ثبت مصرف</button></div>
+      </div>
+
+      <div style="margin-top:12px">
+        <table>
+          <thead><tr><th>نیټه</th><th>مصرف</th><th>مقدار</th><th>عملیات</th></tr></thead>
+          <tbody id="expenseTable"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- REPORTS -->
+    <div class="card">
+      <h3>راپورونه</h3>
+
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        <div style="flex:1;min-width:220px" class="stat card">
+          <div class="small">ورځنی — ټول عاید</div>
+          <div id="dayIncome" style="font-weight:800;font-size:18px">0</div>
+        </div>
+        <div style="flex:1;min-width:220px" class="stat card">
+          <div class="small">ورځنی — ټول مصرف</div>
+          <div id="dayExpense" style="font-weight:800;font-size:18px">0</div>
+        </div>
+        <div style="flex:1;min-width:220px" class="stat card">
+          <div class="small">ورځنی — ټول قرضه</div>
+          <div id="dayDebt" style="font-weight:800;font-size:18px">0</div>
+        </div>
+        <div style="flex:1;min-width:220px" class="stat card">
+          <div class="small">ورځنی — خالص ګټه</div>
+          <div id="dayProfit" style="font-weight:800;font-size:18px">0</div>
+        </div>
+      </div>
+
+      <div style="height:10px"></div>
+
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        <div style="flex:1;min-width:220px" class="stat card">
+          <div class="small">میاشتنی — ټول عاید</div>
+          <div id="monthIncome" style="font-weight:800;font-size:18px">0</div>
+        </div>
+        <div style="flex:1;min-width:220px" class="stat card">
+          <div class="small">میاشتنی — ټول مصرف</div>
+          <div id="monthExpense" style="font-weight:800;font-size:18px">0</div>
+        </div>
+        <div style="flex:1;min-width:220px" class="stat card">
+          <div class="small">میاشتنی — ټول قرضه</div>
+          <div id="monthDebt" style="font-weight:800;font-size:18px">0</div>
+        </div>
+        <div style="flex:1;min-width:220px" class="stat card">
+          <div class="small">میاشتنی — خالص ګټه</div>
+          <div id="monthProfit" style="font-weight:800;font-size:18px">0</div>
+        </div>
+      </div>
+
+      <div style="margin-top:12px">
+        <div class="small">سرمایه (ګدام ارزښت): <b id="investmentDisplay">0</b> افغانۍ</div>
+      </div>
+
+    </div>
+
+    <!-- Today's sheet table -->
+    <div class="card">
+      <h3>د نن ورځې شیټ — ثبت شوي پلورونه</h3>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <div class="small">نېټه: <b id="currentSheet"></b></div>
+        <div style="margin-left:auto">
+          <label>نیټه وټاکئ د کتون لپاره</label>
+          <select id="sheetSelect" onchange="loadSheet(this.value)"></select>
+        </div>
+      </div>
+
+      <table>
+        <thead><tr><th>وخت</th><th>محصول</th><th>مقدار</th><th>فی قیمت</th><th>ټول</th><th>قرضه</th><th>ګټه</th></tr></thead>
+        <tbody id="recordsTable"></tbody>
+      </table>
+    </div>
+
+  </div> <!-- end appCard -->
+
+</div> <!-- end container -->
+
+<script>
+/* ---------- Helpers & storage keys ---------- */
+const TODAY_ISO = new Date().toISOString().slice(0,10); // YYYY-MM-DD
+function keySheet(date){ return 'zz_sheet_' + date; }
+function keyExpenses(date){ return 'zz_expenses_' + date; }
+function saveLS(k,v){ localStorage.setItem(k, JSON.stringify(v)); }
+function loadLS(k,def){ try{ const s=localStorage.getItem(k); return s?JSON.parse(s):def; }catch(e){ return def; } }
+
+/* ---------- Default users & init ---------- */
+let users = loadLS('zz_users', [
+  {username:'admin', password:'admin', role:'مالک'},
+  {username:'manager', password:'123', role:'مدیر'},
+  {username:'worker', password:'1234', role:'کارمند'}
+]);
+saveLS('zz_users', users);
+
+let currentUser = null;
+let stock = loadLS('zz_stock', {}); // {name:{quantity, buyPrice}}
+let sheetDates = loadLS('zz_sheet_dates', []);
+
+/* ensure today's sheet exists */
+function ensureTodaySheet(){
+  const k = keySheet(TODAY_ISO);
+  if(!localStorage.getItem(k)){
+    const sheet = { date: TODAY_ISO, createdBy: null, records: [], totals:{income:0, expense:0, debt:0, profit:0} };
+    saveLS(k, sheet);
+  }
+  if(!sheetDates.includes(TODAY_ISO)){ sheetDates.unshift(TODAY_ISO); saveLS('zz_sheet_dates', sheetDates); }
+}
+ensureTodaySheet();
+
+/* ---------- Login ---------- */
+function doLogin(){
+  const u = document.getElementById('loginUser').value.trim();
+  const p = document.getElementById('loginPass').value;
+  const found = users.find(x=>x.username===u && x.password===p);
+  const msg = document.getElementById('loginMsg');
+  if(!found){ msg.innerText = 'ناسم کارن نوم یا رمز'; msg.style.color='red'; return; }
+  currentUser = found;
+  msg.innerText='';
+  document.getElementById('loginCard').style.display='none';
+  document.getElementById('appCard').style.display='block';
+  document.getElementById('who').innerText = `سلام، ${currentUser.username}`;
+  document.getElementById('whoRole').innerText = currentUser.role;
+  if(currentUser.role==='کارمند'){ document.getElementById('btnAddProd').disabled = true; }
+  document.getElementById('saleDate').value = TODAY_ISO;
+  document.getElementById('currentSheet').innerText = TODAY_ISO;
+  refreshUI();
+}
+
+/* ---------- Stock functions ---------- */
+function saveStock(){ saveLS('zz_stock', stock); }
+function addOrUpdateProduct(){
+  if(!currentUser || (currentUser.role !== 'مالک' && currentUser.role !== 'مدیر')){ alert('یوازې مالک یا مدیر کولی شي محصولات اضافه/تازه کړي'); return; }
+  const name = document.getElementById('prodName').value.trim();
+  const qty = parseFloat(document.getElementById('prodQty').value);
+  const buy = parseFloat(document.getElementById('prodBuy').value);
+  if(!name || isNaN(qty) || isNaN(buy)){ alert('ټولې برخې صحیح ډکې کړئ'); return; }
+  if(!stock[name]) stock[name] = { quantity: 0, buyPrice: buy };
+  stock[name].quantity += qty;
+  stock[name].buyPrice = buy;
+  saveStock(); clearProdInputs(); refreshUI();
+  alert('محصول ثبت/تازه شو: ' + name);
+}
+function clearProdInputs(){ document.getElementById('prodName').value=''; document.getElementById('prodQty').value=''; document.getElementById('prodBuy').value=''; }
+function editStock(name){ const s = stock[name]; const q = prompt('نوی مقدار:', s.quantity); const b = prompt('نوی فی قیمت:', s.buyPrice); const qi = parseFloat(q), bi = parseFloat(b); if(isNaN(qi)||isNaN(bi)){ alert('معتبر ارزښت'); return; } stock[name]={quantity:qi,buyPrice:bi}; saveStock(); refreshUI(); }
+function deleteStock(name){ if(!confirm('حذف یاست؟ '+name)) return; delete stock[name]; saveStock(); refreshUI(); }
+
+/* ---------- populate UI ---------- */
+function refreshUI(){
+  populateStockTable();
+  populateSaleSelect();
+  refreshSheetList();
+  calculateInvestment();
+  loadSheet(TODAY_ISO);
+  calculateDayAndMonth();
+}
+function populateStockTable(){
+  const tbody = document.getElementById('stockTable'); tbody.innerHTML='';
+  for(const name of Object.keys(stock)){
+    const row = tbody.insertRow();
+    row.insertCell(0).innerText = name;
+    row.insertCell(1).innerText = stock[name].quantity;
+    row.insertCell(2).innerText = stock[name].buyPrice;
+    row.insertCell(3).innerText = (stock[name].quantity * stock[name].buyPrice).toFixed(2);
+    const ops = row.insertCell(4);
+    ops.innerHTML = `<button onclick="editStock('${encodeURIComponent(name)}')">ایډیټ</button> <button onclick="deleteStock('${encodeURIComponent(name)}')">حذف</button>`;
+  }
+  // decode in callbacks
+  // update investment display
+  calculateInvestment();
+}
+function populateSaleSelect(){
+  const sel = document.getElementById('saleProduct'); sel.innerHTML='';
+  for(const name of Object.keys(stock)){
+    const opt = document.createElement('option'); opt.value = name; opt.text = `${name} (موجود: ${stock[name].quantity})`; sel.appendChild(opt);
+  }
+}
+
+/* ---------- Sheets management ---------- */
+function refreshSheetList(){
+  sheetDates = loadLS('zz_sheet_dates', sheetDates);
+  if(!sheetDates.includes(TODAY_ISO)){ sheetDates.unshift(TODAY_ISO); saveLS('zz_sheet_dates', sheetDates); }
+  const sel = document.getElementById('sheetSelect'); sel.innerHTML='';
+  for(const d of sheetDates){ const o=document.createElement('option'); o.value=d; o.text=d; sel.appendChild(o); }
+}
+
+/* ensure sheet exists */
+function ensureSheet(date){
+  let sheet = loadLS(keySheet(date), null);
+  if(!sheet){ sheet = { date, createdBy: currentUser?currentUser.username:null, records: [], totals:{income:0,expense:0, debt:0, profit:0} }; saveLS(keySheet(date), sheet); sheetDates = loadLS('zz_sheet_dates', []); if(!sheetDates.includes(date)){ sheetDates.unshift(date); saveLS('zz_sheet_dates', sheetDates); } }
+  return sheet;
+}
+
+/* ---------- Sales ---------- */
+function recordSale(){
+  if(!currentUser){ alert('لومړی ننوتل'); return; }
+  const date = TODAY_ISO;
+  const product = document.getElementById('saleProduct').value;
+  const qty = parseFloat(document.getElementById('saleQty').value);
+  const price = parseFloat(document.getElementById('salePrice').value);
+  const debt = parseFloat(document.getElementById('saleDebt').value) || 0;
+  if(!product || isNaN(qty) || isNaN(price)){ alert('معلومات صحیح داخل کړئ'); return; }
+  if(!stock[product] || stock[product].quantity < qty){ alert('په ګدام کې کافی مقدار نشته'); return; }
+
+  // subtract stock
+  stock[product].quantity -= qty; saveStock();
+
+  // compute totals
+  const total = qty * price;
+  let profit = (price - stock[product].buyPrice) * qty - debt;
+  if(profit < 0) profit = 0; // ستاسو غوښتنه: منفي مه ښکاره کوئ
+
+  const rec = { time: new Date().toLocaleTimeString(), user: currentUser.username, product, qty, price, total, debt, profit };
+  const sheet = ensureSheet(date);
+  sheet.records.push(rec);
+  sheet.totals.income = (sheet.totals.income || 0) + total;
+  sheet.totals.debt = (sheet.totals.debt || 0) + debt;
+  sheet.totals.profit = (sheet.totals.profit || 0) + profit;
+  saveLS(keySheet(date), sheet);
+
+  // also save expense totals if needed (handled in addExpense)
+  refreshUI();
+  // clear inputs
+  document.getElementById('saleQty').value=''; document.getElementById('salePrice').value=''; document.getElementById('saleDebt').value='0';
+  alert('پلور ثبت شو.');
+}
+
+/* ---------- Expenses ---------- */
+function addExpense(){
+  if(!currentUser){ alert('لومړی ننوتل'); return; }
+  const date = TODAY_ISO;
+  const name = document.getElementById('expenseName').value.trim();
+  const amount = parseFloat(document.getElementById('expenseAmount').value);
+  if(!name || isNaN(amount)){ alert('د مصرف نوم او مقدار ولیکئ'); return; }
+  const key = keyExpenses(date);
+  const exps = loadLS(key, []);
+  exps.push({ time: new Date().toLocaleTimeString(), name, amount, user: currentUser.username });
+  saveLS(key, exps);
+
+  // update sheet totals expense
+  const sheet = ensureSheet(date);
+  sheet.totals.expense = (sheet.totals.expense || 0) + amount;
+  saveLS(keySheet(date), sheet);
+
+  document.getElementById('expenseName').value=''; document.getElementById('expenseAmount').value='';
+  refreshUI();
+}
+
+/* ---------- render sheet & expenses ---------- */
+function loadSheet(date){
+  if(!date) date = TODAY_ISO;
+  document.getElementById('currentSheet').innerText = date;
+  const sheet = ensureSheet(date);
+  // render records table
+  const tbody = document.getElementById('recordsTable'); tbody.innerHTML='';
+  let sumIncome=0,sumDebt=0,sumProfit=0;
+  for(const r of sheet.records){
+    const row = tbody.insertRow();
+    row.insertCell(0).innerText = r.time;
+    row.insertCell(1).innerText = r.product;
+    row.insertCell(2).innerText = r.qty;
+    row.insertCell(3).innerText = r.price;
+    row.insertCell(4).innerText = r.total;
+    row.insertCell(5).innerText = r.debt;
+    row.insertCell(6).innerText = r.profit;
+    sumIncome += r.total; sumDebt += r.debt; sumProfit += r.profit;
+  }
+  // render expenses
+  const expT = document.getElementById('expenseTable'); expT.innerHTML='';
+  const exps = loadLS(keyExpenses(date), []);
+  let sumExpense=0;
+  for(const e of exps){
+    const row = expT.insertRow();
+    row.insertCell(0).innerText = e.time;
+    row.insertCell(1).innerText = e.name;
+    row.insertCell(2).innerText = e.amount;
+    row.insertCell(3).innerHTML = `<button onclick="deleteExpense('${date}', ${exps.indexOf(e)})">حذف</button>`;
+    sumExpense += e.amount;
+  }
+  // update totals display for this sheet
+  const net = Math.max(0, sumProfit - sumExpense); // non-negative
+  document.getElementById('dayIncome').innerText = sumIncome.toFixed(2);
+  document.getElementById('dayExpense').innerText = sumExpense.toFixed(2);
+  document.getElementById('dayDebt').innerText = sumDebt.toFixed(2);
+  document.getElementById('dayProfit').innerText = net.toFixed(2);
+  // set current sheet totals in storage
+  sheet.totals.income = sumIncome; sheet.totals.expense = sumExpense; sheet.totals.debt = sumDebt; sheet.totals.profit = sumProfit;
+  saveLS(keySheet(date), sheet);
+  // set current sheet select value
+  try{ document.getElementById('sheetSelect').value = date; }catch(e){}
+}
+
+/* delete expense by index */
+function deleteExpense(date, idx){
+  const key = keyExpenses(date);
+  const arr = loadLS(key, []);
+  if(idx < 0 || idx >= arr.length) return;
+  if(!confirm('مصرف حذف کړل شي؟')) return;
+  arr.splice(idx,1);
+  saveLS(key, arr);
+  // update sheet totals
+  const sheet = ensureSheet(date);
+  let sumExpense = arr.reduce((s,a)=>s+a.amount,0);
+  sheet.totals.expense = sumExpense;
+  saveLS(keySheet(date), sheet);
+  refreshUI();
+}
+
+/* ---------- Investment calculation ---------- */
+function calculateInvestment(){
+  let total = 0;
+  for(const name of Object.keys(stock)){
+    total += (stock[name].quantity || 0) * (stock[name].buyPrice || 0);
+  }
+  document.getElementById('myInvestment').innerText = total.toFixed(2);
+  document.getElementById('investmentDisplay').innerText = total.toFixed(2);
+  return total;
+}
+
+/* ---------- Day & Month aggregates ---------- */
+function calculateDayAndMonth(){
+  // day already computed in loadSheet
+  // month: iterate over sheetDates and sum those that match current month
+  const monthPrefix = TODAY_ISO.slice(0,7); // YYYY-MM
+  let mIncome=0, mExpense=0, mDebt=0, mProfit=0;
+  sheetDates = loadLS('zz_sheet_dates', sheetDates);
+  for(const d of sheetDates){
+    if(d.startsWith(monthPrefix)){
+      const s = loadLS(keySheet(d), null);
+      if(s){
+        mIncome += (s.totals.income || 0);
+        mExpense += (s.totals.expense || 0);
+        mDebt += (s.totals.debt || 0);
+        mProfit += (s.totals.profit || 0);
+      }
+    }
+  }
+  const netMonth = Math.max(0, mProfit - mExpense);
+  document.getElementById('monthIncome').innerText = mIncome.toFixed(2);
+  document.getElementById('monthExpense').innerText = mExpense.toFixed(2);
+  document.getElementById('monthDebt').innerText = mDebt.toFixed(2);
+  document.getElementById('monthProfit').innerText = netMonth.toFixed(2);
+}
+
+/* ---------- CSV Exports ---------- */
+function downloadTodayCSV(){
+  const date = TODAY_ISO;
+  const sheet = loadLS(keySheet(date), {records:[]});
+  let csv = 'وخت,یوزر,محصول,مقدار,فی قیمت,ټول قیمت,قرضه,ګټه\n';
+  for(const r of sheet.records){
+    csv += `${r.time},${r.user},${r.product},${r.qty},${r.price},${r.total},${r.debt},${r.profit}\n`;
+  }
+  csv += '\nمصارف:\nوخت,مصرف,مقدار\n';
+  const exps = loadLS(keyExpenses(date), []);
+  for(const e of exps) csv += `${e.time},${e.name},${e.amount}\n`;
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'}); const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = `daily_${date}.csv`; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+}
+
+function downloadMonthlyCSV(){
+  const monthPrefix = TODAY_ISO.slice(0,7);
+  let csv = 'نیټه,وخت,یوزر,محصول,مقدار,فی قیمت,ټول قیمت,قرضه,ګټه\n';
+  sheetDates = loadLS('zz_sheet_dates', sheetDates);
+  for(const d of sheetDates){
+    if(d.startsWith(monthPrefix)){
+      const s = loadLS(keySheet(d), {records:[]});
+      for(const r of s.records) csv += `${d},${r.time},${r.user},${r.product},${r.qty},${r.price},${r.total},${r.debt},${r.profit}\n`;
+      // include expenses
+      const exps = loadLS(keyExpenses(d), []);
+      if(exps && exps.length){
+        csv += `\n${d} - مصارف:\nوخت,مصرف,مقدار\n`;
+        for(const e of exps) csv += `${e.time},${e.name},${e.amount}\n`;
+      }
+    }
+  }
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'}); const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = `monthly_${monthPrefix}.csv`; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+}
+
+/* ---------- Load sheet for selected date ---------- */
+function loadSheet(date){
+  if(!date) date = TODAY_ISO;
+  document.getElementById('currentSheet').innerText = date;
+  const sheet = ensureSheet(date);
+  // show records
+  const tbody = document.getElementById('recordsTable'); tbody.innerHTML='';
+  for(const r of sheet.records){
+    const row = tbody.insertRow();
+    row.insertCell(0).innerText = r.time;
+    row.insertCell(1).innerText = r.product;
+    row.insertCell(2).innerText = r.qty;
+    row.insertCell(3).innerText = r.price;
+    row.insertCell(4).innerText = r.total;
+    row.insertCell(5).innerText = r.debt;
+    row.insertCell(6).innerText = r.profit;
+  }
+  // show expenses for that date
+  const expT = document.getElementById('expenseTable'); expT.innerHTML='';
+  const exps = loadLS(keyExpenses(date), []);
+  for(const [i,e] of exps.entries()){
+    const row = expT.insertRow();
+    row.insertCell(0).innerText = e.time;
+    row.insertCell(1).innerText = e.name;
+    row.insertCell(2).innerText = e.amount;
+    row.insertCell(3).innerHTML = `<button onclick="deleteExpense('${date}', ${i})">حذف</button>`;
+  }
+  // update day totals
+  let sumIncome=sheet.records.reduce((s,r)=>s+r.total,0);
+  let sumDebt=sheet.records.reduce((s,r)=>s+r.debt,0);
+  let sumProfit=sheet.records.reduce((s,r)=>s+r.profit,0);
+  let sumExp = exps.reduce((s,e)=>s+e.amount,0);
+  document.getElementById('dayIncome').innerText = sumIncome.toFixed(2);
+  document.getElementById('dayExpense').innerText = sumExp.toFixed(2);
+  document.getElementById('dayDebt').innerText = sumDebt.toFixed(2);
+  document.getElementById('dayProfit').innerText = Math.max(0, sumProfit - sumExp).toFixed(2);
+
+  // set select value
+  try{ document.getElementById('sheetSelect').value = date; }catch(e){}
+}
+
+/* ---------- logout ---------- */
+function logout(){ currentUser = null; document.getElementById('appCard').style.display='none'; document.getElementById('loginCard').style.display='block'; }
+
+/* ---------- initial UI population ---------- */
+function initUI(){
+  // set sale date and ensure today's sheet
+  document.getElementById('saleDate').value = TODAY_ISO;
+  ensureTodaySheet();
+  populateStockTable();
+  populateSaleSelect();
+  refreshSheetList();
+  loadSheet(TODAY_ISO);
+  calculateInvestment();
+  calculateDayAndMonth();
+}
+initUI();
+
+</script>
+</body>
+</html>
